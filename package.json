@@ -1,5 +1,5 @@
 {
-  "name": "envguard",
+  "name": "envguard-cli",
   "version": "1.0.0",
   "description": "Static analysis for environment variables — finds dead vars, missing vars, and framework misconfigurations by scanning your source code",
   "main": "dist/index.js",

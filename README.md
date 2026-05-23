@@ -1,4 +1,4 @@
-# ⚡ envguard
+# ⚡ Envguard
 
 > Static analysis for environment variables — finds dead, missing, empty, duplicate vars and security issues by scanning your actual source code using AST parsing.
 
@@ -9,11 +9,11 @@
 
 ---
 
-## Why envguard?
+## Why Envguard?
 
 Most `.env` linters only check the `.env` file itself — formatting, duplicates, syntax.
 
-**envguard does something fundamentally different.**
+**Envguard does something fundamentally different.**
 
 It parses your actual source code using a full AST parser (Babel) and cross-references every `process.env.X` call against your declared variables. This means it catches real bugs — variables that will be `undefined` at runtime, secrets that are dead weight, and framework-specific misconfigurations that would only surface in production.
 

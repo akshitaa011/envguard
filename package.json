@@ -1,5 +1,5 @@
 {
-  "name": "envguard-cli",
+  "name": "@akshitaa11/envguard",
   "version": "1.0.0",
   "description": "Static analysis for environment variables — finds dead vars, missing vars, and framework misconfigurations by scanning your source code",
   "main": "dist/index.js",
@@ -19,6 +19,10 @@
   "keywords": ["env", "dotenv", "linter", "static-analysis", "cli", "devtools"],
   "author": "Akshita",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/akshitaa011/envguard.git"
+  },
   "dependencies": {
     "@babel/parser": "^7.23.0",
     "@babel/traverse": "^7.23.0",

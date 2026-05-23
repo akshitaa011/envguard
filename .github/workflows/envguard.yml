@@ -1,0 +1,47 @@
+# .github/workflows/envguard.yml
+# Use envguard as a GitHub Action in any project.
+# Add this file to YOUR project's .github/workflows/ to run envguard on every PR.
+
+name: envguard — Env Variable Analysis
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  envguard:
+    name: Check Environment Variables
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install envguard
+        run: npm install -g envguard
+
+      # Run envguard and output SARIF for GitHub Code Scanning
+      - name: Run envguard (SARIF output)
+        run: envguard check . --output sarif --fail-on missing > envguard-results.sarif
+        continue-on-error: true  # Don't fail the step — let Code Scanning handle it
+
+      # Upload SARIF results to GitHub Code Scanning
+      # Results appear as inline PR annotations
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: envguard-results.sarif
+          category: envguard
+
+      # Also run a human-readable check that actually fails the build
+      - name: Run envguard (fail on missing vars)
+        run: envguard check . --fail-on missing --quiet

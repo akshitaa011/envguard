@@ -1,0 +1,73 @@
+# action.yml
+# This makes envguard usable as a GitHub Action directly:
+#   uses: akshitaa011/envguard@v1
+
+name: 'envguard'
+description: 'Static analysis for environment variables — dead vars, missing vars, framework misconfigurations'
+author: 'Your Name'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  root:
+    description: 'Project root directory'
+    required: false
+    default: '.'
+  env-file:
+    description: 'Path to .env file (default: auto-detected)'
+    required: false
+  framework:
+    description: 'Framework: nextjs | vite | react | express | node'
+    required: false
+  output:
+    description: 'Output format: table | json | sarif'
+    required: false
+    default: 'sarif'
+  fail-on:
+    description: 'Comma-separated: dead,missing,warnings'
+    required: false
+    default: 'missing'
+  upload-sarif:
+    description: 'Upload SARIF results to GitHub Code Scanning'
+    required: false
+    default: 'true'
+
+outputs:
+  dead-count:
+    description: 'Number of dead env variables found'
+  missing-count:
+    description: 'Number of missing env variables found'
+  passed:
+    description: 'true if no issues were found'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install envguard
+      shell: bash
+      run: npm install -g envguard
+
+    - name: Run envguard
+      shell: bash
+      id: run-envguard
+      run: |
+        envguard check ${{ inputs.root }} \
+          ${{ inputs.env-file && format('--env-file {0}', inputs.env-file) || '' }} \
+          ${{ inputs.framework && format('--framework {0}', inputs.framework) || '' }} \
+          --output ${{ inputs.output }} \
+          --fail-on ${{ inputs.fail-on }} \
+          > envguard-results.sarif 2>&1 || true
+
+    - name: Upload SARIF
+      if: inputs.upload-sarif == 'true'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: envguard-results.sarif
+        category: envguard

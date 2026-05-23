@@ -1,0 +1,45 @@
+{
+  "name": "envguard",
+  "version": "1.0.0",
+  "description": "Static analysis for environment variables — finds dead vars, missing vars, and framework misconfigurations by scanning your source code",
+  "main": "dist/index.js",
+  "bin": {
+    "envguard": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/cli.ts",
+    "test": "jest",
+    "lint": "eslint src --ext .ts"
+  },
+  "keywords": ["env", "dotenv", "linter", "static-analysis", "cli", "devtools"],
+  "author": "Akshita",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/parser": "^7.23.0",
+    "@babel/traverse": "^7.23.0",
+    "@babel/types": "^7.23.0",
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "dotenv": "^16.3.1",
+    "glob": "^10.3.10",
+    "table": "^6.8.1"
+  },
+  "devDependencies": {
+    "@types/babel__traverse": "^7.20.4",
+    "@types/jest": "^29.5.8",
+    "@types/node": "^20.9.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": ["**/tests/**/*.test.ts"]
+  }
+}

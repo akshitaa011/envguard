@@ -1,215 +1,323 @@
 # ⚡ envguard
 
-> Static analysis for environment variables — finds dead vars, missing vars, and framework misconfigurations by scanning your source code.
+> Static analysis for environment variables — finds dead, missing, empty, duplicate vars and security issues by scanning your actual source code using AST parsing.
 
-[![npm version](https://badge.fury.io/js/envguard.svg)](https://badge.fury.io/js/envguard)
+[![npm version](https://img.shields.io/npm/v/@akshitaa11/envguard.svg)](https://www.npmjs.com/package/@akshitaa11/envguard)
 [![CI](https://github.com/akshitaa011/envguard/actions/workflows/envguard.yml/badge.svg)](https://github.com/akshitaa011/envguard/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
-Unlike other `.env` linters that only check the `.env` file in isolation, **envguard scans your actual source code using an AST parser** and cross-references it against your declared variables.
+---
+
+## Why envguard?
+
+Most `.env` linters only check the `.env` file itself — formatting, duplicates, syntax.
+
+**envguard does something fundamentally different.**
+
+It parses your actual source code using a full AST parser (Babel) and cross-references every `process.env.X` call against your declared variables. This means it catches real bugs — variables that will be `undefined` at runtime, secrets that are dead weight, and framework-specific misconfigurations that would only surface in production.
 
 ---
 
 ## The Problem
 
-Every team has this in their `.env`:
+Every project eventually ends up with this:
 
-```
+```env
 DATABASE_URL=postgres://...
-OLD_STRIPE_KEY=sk_live_XXXXXXX      # hasn't been used since Q2
-LEGACY_REDIS_URL=redis://...        # service was deprecated
-ANALYTICS_SECRET=abc123             # what even is this
+OLD_STRIPE_KEY=sk_live_xxxxx
+LEGACY_REDIS_URL=redis://localhost:6379
+JWT_SECRET=
+API_KEY=abc
+API_KEY=xyz
 ```
 
-And in code:
+And somewhere in code:
+
 ```js
-const api = process.env.OPENAI_API_KEY;  // crashes in production — never declared!
+const api = process.env.OPENAI_API_KEY;
 ```
 
-envguard catches both.
+envguard catches all of it before it reaches production.
 
 ---
 
 ## What It Detects
 
-| Category | Description |
-|---|---|
-| 🗑️ **Dead** | Declared in `.env`, never referenced in source code |
-| ⚠️ **Missing** | Used in source code, not in `.env` — will be `undefined` at runtime |
-| 🔧 **Framework issues** | Next.js server vars in client code, Vite prefix violations, CRA prefix violations |
-| ❓ **Dynamic** | `process.env[variable]` — flagged for manual review |
+| Category | Icon | Description |
+|---|---|---|
+| Dead Variables | 🗑️ | Declared in `.env` but never referenced in source code |
+| Missing Variables | ⚠️ | Used in source code but not declared in `.env` |
+| Empty Variables | 🚨 | Declared without a value |
+| Duplicate Variables | 🔁 | Same key declared multiple times |
+| Example Mismatch | 📄 | `.env` and `.env.example` are out of sync |
+| Security Issues | 🔐 | `.env` exposure & real secret detection |
+| Framework Issues | 🔧 | Framework-specific env mistakes |
+| Dynamic Access | ❓ | Unresolved dynamic env access |
 
 ---
 
 ## Installation
 
 ```bash
-# Global (for CLI use)
-npm install -g envguard
+# Global install
+npm install -g @akshitaa011/envguard
 
-# Local (for project integration)
-npm install --save-dev envguard
+# Local install
+npm install --save-dev @akshitaa011/envguard
+```
+
+---
+
+## Quick Start
+
+```bash
+# Scan current directory
+npx @akshitaa011/envguard check .
+
+# Scan a specific project
+npx @akshitaa011/envguard check ./my-app
+
+# Framework override
+npx @akshitaa011/envguard check . --framework nextjs
 ```
 
 ---
 
 ## Usage
 
-### Basic scan
+### Output Formats
+
 ```bash
-# Scan current directory (auto-detects framework)
-envguard check
-
-# Scan a specific directory
-envguard check ./my-app
-
-# Specify framework explicitly
-envguard check . --framework nextjs
-```
-
-### Output formats
-```bash
-# Human-readable table (default)
+# Human-readable table
 envguard check . --output table
 
-# JSON (for programmatic use)
+# JSON output
 envguard check . --output json
 
-# SARIF (for GitHub Code Scanning)
+# SARIF output
 envguard check . --output sarif > results.sarif
 ```
 
-### CI: fail the build on missing vars
+### CI Integration
+
 ```bash
-# Exit code 1 if any variables are used but not declared
+# Fail build on missing vars
 envguard check . --fail-on missing
 
-# Fail on dead OR missing vars
-envguard check . --fail-on dead,missing
-
-# Fail on framework errors too
-envguard check . --fail-on missing,warnings
+# Fail on multiple issue types
+envguard check . --fail-on dead,missing,empty,duplicates,security
 ```
 
-### List all vars
+### Monorepo Support
+
 ```bash
-envguard list
+envguard check . --monorepo
+```
+
+### List All Variables
+
+```bash
+envguard list .
 ```
 
 ---
 
 ## Example Output
 
-```
-  ⚡ envguard — environment variable analysis
-  Framework: nextjs | Root: .
+### Missing, dead, empty and duplicate variable detection
 
-  ✅ 4 healthy  │  🗑️  2 dead  │  ⚠️  1 missing  │  ❓ 0 dynamic
+![envguard output](./assets/output-1.png)
 
-  🗑️  Dead Variables (2)
-  Declared in .env but never referenced in source code
+### Duplicate and healthy variable reporting
 
-  ┌─────────────────────────┬───────────┬────────┬──────┐
-  │ Key                     │ Value     │ File   │ Line │
-  ├─────────────────────────┼───────────┼────────┼──────┤
-  │ OLD_STRIPE_KEY          │ sk_li**** │ .env   │ 3    │
-  │ LEGACY_REDIS_URL        │ red****   │ .env   │ 4    │
-  └─────────────────────────┴───────────┴────────┴──────┘
+![envguard output](./assets/output-2.png)
 
-  ⚠️  Missing Variables (1)
-  Used in source code but NOT declared in .env
+### CLI Output
 
-  ┌─────────────────┬──────────────────────────┬────────────────────┬──────┐
-  │ Key             │ Access Pattern           │ File               │ Line │
-  ├─────────────────┼──────────────────────────┼────────────────────┼──────┤
-  │ OPENAI_API_KEY  │ process.env.OPENAI_API_… │ src/lib/openai.ts  │ 12   │
-  └─────────────────┴──────────────────────────┴────────────────────┴──────┘
+```txt
+⚡ envguard — environment variable analysis
+Framework: express | Root: .
 
-  ✖ Issues found. See above for details.
+🚨 SECURITY: ".env" is NOT in your .gitignore. Add ".env*" to .gitignore immediately.
+
+✅ 3 healthy │ 🗑️ 1 dead │ ⚠️ 1 missing │ 🚨 1 empty │ 🔁 1 duplicate │ ❓ 0 dynamic
+
+⚠️ Missing Variables (1)
+
+Used in source code but NOT declared in .env — will be undefined at runtime
+
+┌─────────────────┬──────────────────────────────┬────────────────────┬──────┐
+│ Key             │ Access Pattern              │ File               │ Line │
+├─────────────────┼──────────────────────────────┼────────────────────┼──────┤
+│ OPENAI_API_KEY  │ process.env.OPENAI_API_KEY │ src/lib/openai.ts  │ 12   │
+└─────────────────┴──────────────────────────────┴────────────────────┴──────┘
+
+🗑️ Dead Variables (1)
+
+Declared in .env but never referenced in source code
+
+┌──────────────────┬───────────┬────────┬──────┐
+│ Key              │ Value     │ File   │ Line │
+├──────────────────┼───────────┼────────┼──────┤
+│ OLD_STRIPE_KEY   │ sk_li**** │ .env   │ 3    │
+└──────────────────┴───────────┴────────┴──────┘
+
+🚨 Empty Variables (1)
+
+┌────────────┬────────┬──────┐
+│ Key        │ File   │ Line │
+├────────────┼────────┼──────┤
+│ JWT_SECRET │ .env   │ 5    │
+└────────────┴────────┴──────┘
+
+🔁 Duplicate Variables (1)
+
+API_KEY — declared 2x:
+line 6: abc****
+line 7: xyz****
+
+✖ Issues found. See above for details.
 ```
 
 ---
 
 ## Framework Support
 
-### Next.js
-- Warns if a non-`NEXT_PUBLIC_` var is used in a client-side component (will be `undefined` in the browser)
-- Warns if `NEXT_PUBLIC_` var name suggests it contains a secret (exposed in browser bundle)
-- Errors if `import.meta.env` is used (Vite syntax, not Next.js)
+| Framework | Auto-detected | Checks Applied |
+|---|---|---|
+| Next.js | ✅ | `NEXT_PUBLIC_` exposure, client/server misuse |
+| Vite | ✅ | Missing `VITE_` prefix |
+| React (CRA) | ✅ | Missing `REACT_APP_` prefix |
+| Express / Node | ✅ | Empty DB/SECRET/TOKEN detection |
+| NestJS | ✅ | Auto-detection support |
+| Remix | ✅ | Auto-detection support |
+| Astro | ✅ | Auto-detection support |
 
-### Vite
-- Errors if a var without `VITE_` prefix is accessed via `import.meta.env` (Vite won't expose it)
-- Warns if `VITE_` prefix is used on what looks like a secret key (exposed in bundle)
-- Warns if `process.env` is used in client files (use `import.meta.env` instead)
+---
 
-### React (CRA)
-- Errors if a var without `REACT_APP_` prefix is used in component files
+## Constant Folding
 
-### Express / Node
-- Warns if critical-looking vars (DB, SECRET, TOKEN) have empty values
+envguard resolves dynamic env access when the variable is a string constant:
+
+```js
+const key = "OPENROUTER_API_KEY";
+const val = process.env[key];
+```
+
+Resolved as:
+
+```txt
+OPENROUTER_API_KEY
+```
+
+Unresolvable accesses are flagged as dynamic.
+
+---
+
+## Security Checks
+
+```txt
+🚨 SECURITY: ".env" is NOT in your .gitignore
+🛡️ OPENAI_API_KEY appears to contain a real secret
+🛡️ GITHUB_TOKEN appears to contain a real secret
+```
+
+Detects:
+- OpenAI keys
+- OpenRouter keys
+- GitHub PATs
+- AWS Access Keys
+- Slack tokens
+- JWT-like secrets
+
+---
+
+## .env.example Validation
+
+```txt
+📄 .env.example Mismatches
+
+In .env but missing from .env.example:
+  GEMINI_API_KEY
+  JWT_SECRET
+
+In .env.example but missing locally:
+  SENDGRID_KEY
+```
+
+---
+
+## Ignore Config
+
+Create `.envguardignore`:
+
+```txt
+tests
+mocks
+generated
+scripts
+```
 
 ---
 
 ## GitHub Action
 
-Add to any project's `.github/workflows/`:
-
 ```yaml
-- name: Check env variables
-  uses: akshitaa011/envguard@v1
-  with:
-    fail-on: missing
-    upload-sarif: true   # Results appear as inline PR annotations
+name: Check Environment Variables
+
+on: [pull_request]
+
+jobs:
+  envguard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - run: npx @akshitaa011/envguard check . --fail-on missing
 ```
 
 ---
 
-## API (Library Usage)
+## API Usage
 
-```typescript
-import { analyze } from 'envguard';
+```ts
+import { analyze } from '@akshitaa011/envguard';
 
 const result = await analyze({
   root: './my-project',
   framework: 'nextjs',
-  failOn: ['missing'],
 });
 
-console.log(`Dead: ${result.dead.length}`);
-console.log(`Missing: ${result.missing.length}`);
-console.log(`Warnings: ${result.warnings.length}`);
+console.log(result.dead);
+console.log(result.missing);
 ```
 
 ---
 
 ## Detection Patterns
 
-envguard detects all of these:
-
-```javascript
-// Standard access
+```js
 process.env.API_KEY
-
-// Bracket string access
 process.env['API_KEY']
-
-// Dynamic access (flagged as unanalyzable)
 process.env[dynamicVar]
 
-// Destructuring
-const { API_KEY, DB_URL } = process.env
+const { API_KEY } = process.env
 
-// Vite client-side
 import.meta.env.VITE_API_URL
-import.meta.env['VITE_API_URL']
 
-// Optional chaining
-process.env?.API_KEY
+const key = "API_KEY";
+process.env[key]
 ```
 
 ---
 
-## Options
+## All Options
 
 | Option | Description | Default |
 |---|---|---|
@@ -217,10 +325,11 @@ process.env?.API_KEY
 | `--env-example` | Path to `.env.example` | `.env.example` |
 | `--framework` | Framework override | Auto-detected |
 | `--output` | `table` \| `json` \| `sarif` | `table` |
-| `--fail-on` | `dead,missing,warnings` | `missing` |
+| `--fail-on` | Issue types that fail CI | `missing` |
 | `--include` | Glob patterns to scan | All JS/TS files |
-| `--exclude` | Dirs to skip | `node_modules,dist,...` |
-| `--quiet` | Hide healthy list | `false` |
+| `--exclude` | Dirs to skip | `node_modules,dist` |
+| `--monorepo` | Scan workspace packages | `false` |
+| `--quiet` | Hide healthy variables | `false` |
 
 ---
 
@@ -228,14 +337,18 @@ process.env?.API_KEY
 
 ```bash
 git clone https://github.com/akshitaa011/envguard
+
 cd envguard
+
 npm install
 npm test
 npm run build
 ```
 
+PRs are welcome.
+
 ---
 
 ## License
 
-MIT
+MIT © Akshita

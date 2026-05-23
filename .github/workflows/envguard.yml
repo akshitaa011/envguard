@@ -15,6 +15,10 @@ jobs:
     name: Check Environment Variables
     runs-on: ubuntu-latest
 
+    permissions:
+      security-events: write
+      contents: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,7 +40,7 @@ jobs:
       # Upload SARIF results to GitHub Code Scanning
       # Results appear as inline PR annotations
       - name: Upload SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: envguard-results.sarif
